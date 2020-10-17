@@ -1,109 +1,80 @@
-use lazy_static;
-use serde_derive;
-use tera::Context;
-use tera::Tera;
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use lazy_static::lazy_static;
+use serde_derive::Deserialize;
+use std::sync::Mutex;
+use tera::{Context, Tera};
 
-const ID_TEMPLATE: &str = "id_template";
-const PERSON_ID_TEMPLATE: &str = "person_id_template";
-const POSSIBLE_PERSON_TEMPLATE: &str = "possible_person_template";
-const MULTIPLE_PERSON_ID_TEMPLATE: &str = "multiple_person_id_template";
+mod fake_db;
+mod person;
 
-lazy_static::lazy_static! {
+lazy_static! {
     pub static ref TERA: Tera = Tera::new("src/templates/**").unwrap();
 }
 
-fn main() {
-    let mut tera_engine = Tera::default();
+pub struct AppState {
+    db: fake_db::FakeDb,
+}
 
-    tera_engine
-        .add_raw_template(ID_TEMPLATE, "Identifier: {{id}}.")
-        .unwrap();
+fn get_main() -> impl Responder {
+    let ctx = Context::new();
 
-    let mut numeric_id = Context::new();
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(TERA.render("index.html", &ctx).unwrap())
+}
 
-    numeric_id.insert("id", &7362);
+#[derive(Deserialize)]
+pub struct Filter {
+    partial_name: Option<String>,
+}
 
-    println!("{}", tera_engine.render(ID_TEMPLATE, &numeric_id).unwrap());
+fn get_page_persons(
+    query: web::Query<Filter>,
+    state: web::Data<Mutex<AppState>>,
+) -> impl Responder {
+    let partial_name = query.partial_name.clone().unwrap_or(String::default());
+    let db = &state.lock().unwrap().db;
+    let mut ctx = Context::new();
 
-    // usage with structs
-    tera_engine
-        .add_raw_template(PERSON_ID_TEMPLATE, "Person id: {{person.id}}")
-        .unwrap();
+    ctx.insert("partial_name", &partial_name);
 
-    #[derive(serde_derive::Serialize)]
-    struct Person {
-        id: i32,
-        name: String,
+    if partial_name.as_str() != String::default() {
+        ctx.insert(
+            "persons",
+            &db.get_persons_by_name(partial_name.as_str())
+                .collect::<Vec<_>>(),
+        );
+    } else {
+        ctx.insert("persons", &db.get_all_persons());
     }
 
-    let mut person_ctx = Context::new();
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(TERA.render("persons.html", &ctx).unwrap())
+}
 
-    person_ctx.insert(
-        "person",
-        &Person {
-            id: 534,
-            name: "Mary".to_string(),
-        },
-    );
+fn invalid_resource() -> impl Responder {
+    HttpResponse::NotFound()
+        .content_type("text/html")
+        .body("<h2>Not Found</h2>");
+}
 
-    println!(
-        "{}",
-        tera_engine.render(PERSON_ID_TEMPLATE, &person_ctx).unwrap()
-    );
+fn main() -> std::io::Result<()> {
+    let address = "127.0.0.1:8080";
 
-    tera_engine
-        .add_raw_template(
-            POSSIBLE_PERSON_TEMPLATE,
-            "{%if person%} Id: {{person.id}}\
-        {%else%} No person \
-        {%endif%}",
-        )
-        .unwrap();
+    println!("Server listening on http://{}", address);
 
-    println!(
-        "{}",
-        tera_engine
-            .render(POSSIBLE_PERSON_TEMPLATE, &person_ctx)
-            .unwrap()
-    );
-    println!(
-        "{}",
-        tera_engine
-            .render(POSSIBLE_PERSON_TEMPLATE, &numeric_id)
-            .unwrap()
-    );
+    let state = web::Data::new(Mutex::new(AppState {
+        db: fake_db::FakeDb::new(),
+    }));
 
-    tera_engine
-        .add_raw_template(
-            MULTIPLE_PERSON_ID_TEMPLATE,
-            "{%for p in persons%}\
-                Id: {{p.id}};\n\
-                {%endfor%}",
-        )
-        .unwrap();
-
-    let mut persons_ctx = Context::new();
-
-    persons_ctx.insert(
-        "persons",
-        &vec![
-            Person {
-                id: 123,
-                name: "Esteban".to_string(),
-            },
-            Person {
-                id: 456,
-                name: "Sarasa".to_string(),
-            },
-        ],
-    );
-
-    println!(
-        "{}",
-        tera_engine
-            .render(MULTIPLE_PERSON_ID_TEMPLATE, &persons_ctx)
-            .unwrap()
-    );
-
-    println!("{}", TERA.render("templ_id.txt", &numeric_id).unwrap());
+    HttpServer::new(move || {
+        App::new()
+            .register_data(state.clone())
+            .service(web::resource("/").route(web::get().to(get_main)))
+            .service(web::resource("/page/persons").route(web::get().to(get_page_persons)))
+            .default_service(web::route().to(invalid_resource))
+    })
+    .bind(address)?
+    .run()
 }
