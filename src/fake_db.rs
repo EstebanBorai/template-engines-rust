@@ -28,4 +28,41 @@ impl FakeDb {
             .iter()
             .filter(move |p| p.name.contains(partial))
     }
+
+    pub fn get_person_by_id(&self, id: u32) -> Option<Person> {
+        self.persons.clone().into_iter().find(|p| p.id == id)
+    }
+
+    pub fn delete(&mut self, id: u32) -> bool {
+        if let Some(person_index) = self.persons.iter().position(|p| p.id == id) {
+            self.persons.remove(person_index);
+
+            return true;
+        }
+
+        false
+    }
+
+    pub fn insert(&mut self, name: &str) -> u32 {
+        let next_id = self.persons.len() + 1;
+        let next_id = next_id as u32;
+
+        self.persons.push(Person::new(next_id, name));
+
+        next_id
+    }
+
+    pub fn update(&mut self, id: u32, name: &str) -> u32 {
+        if let Some((index, _)) = self
+            .persons
+            .iter()
+            .enumerate()
+            .find(|(_, person)| person.id == id) {
+                self.persons[index] = Person::new(id, name);
+
+                return id;
+            }
+
+        return 0;
+    }
 }
