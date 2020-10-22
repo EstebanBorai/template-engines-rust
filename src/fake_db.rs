@@ -1,7 +1,9 @@
 use crate::person::Person;
+use crate::user::{User, DbPrivilege};
 
 pub struct FakeDb {
     persons: Vec<Person>,
+    users: Vec<User>,
 }
 
 impl FakeDb {
@@ -13,6 +15,10 @@ impl FakeDb {
                 Person::new(3, "Carlos"),
                 Person::new(4, "Ana"),
             ],
+            users: vec![
+                User::new("root", "root", vec![DbPrivilege::CanRead, DbPrivilege::CanWrite]),
+                User::new("john", "appleseed", vec![DbPrivilege::CanRead]),
+            ]
         }
     }
 
@@ -64,5 +70,13 @@ impl FakeDb {
             }
 
         return 0;
+    }
+
+    pub fn get_user_by_username(&self, username: &str) -> Option<&User> {
+        if let Some(user) = self.users.iter().find(|u| u.username == username) {
+            return Some(user);
+        }
+
+        None
     }
 }

@@ -247,6 +247,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-web-httpauth"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e7005033d05a151c86016468cca1d38febb84a894bbb7a332118479f4ed7398"
+dependencies = [
+ "actix-service",
+ "actix-web",
+ "base64",
+ "bytes",
+ "futures",
+ "futures-locks",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -652,6 +666,17 @@ name = "futures"
 version = "0.1.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c7e4c2612746b0df8fed4ce0c69156021b704c9aefa360311c04e6e9e002eed"
+
+[[package]]
+name = "futures-locks"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd5658075ca5ae3918993c5bc95b43fcf22f927227660556a947da598f9f8981"
+dependencies = [
+ "futures",
+ "tokio-current-thread",
+ "tokio-executor",
+]
 
 [[package]]
 name = "generic-array"
@@ -1619,6 +1644,7 @@ name = "template-engines-rust"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "actix-web-httpauth",
  "lazy_static",
  "serde",
  "serde_derive",

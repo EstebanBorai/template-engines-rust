@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 actix-web = "1"
+actix-web-httpauth = "0.3"
 lazy_static = "1.2"
 tera = "1"
 serde = "1"
